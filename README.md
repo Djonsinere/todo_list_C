@@ -1,3 +1,4 @@
+commands: add {text task}; com {number of task}; del {num of task}
 example usage:
 
 ./a.aut
@@ -25,5 +26,5 @@ todo_list:> del 1
 or > cc main.c
 next the same
 
-commands: add {text task}; com {number of task}; del {num of task}
+
 
