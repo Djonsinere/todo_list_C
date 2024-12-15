@@ -4,83 +4,129 @@
 
 #define MAX 100
 
-int complite_task(char* todo_array[], int index) {
-    index -= 1;
-    if (todo_array[index] == NULL) {
-        printf("Задача с индексом %d не существует.\n", index);
-        return -1;
+#define TEMP_FILE "temp.txt" // Временный файл
+
+void complite_task(const char *filename, int index) {
+    FILE *input = fopen(filename, "r");
+    if (input == NULL) {
+        perror("Ошибка при открытии файла");
+        return;
     }
 
-    char buffer[256]; // Временный буфер для строки
-    snprintf(buffer, sizeof(buffer), "\033[9m%s\033[0m ✓", todo_array[index]);
-
-    free(todo_array[index]);
-
-    todo_array[index] = strdup(buffer);
-
-    return 0;
-}
-
-int add_task(char* todo_array[], char* text, int chetch){
-    if (chetch < MAX){
-        todo_array[chetch] = strdup(text); // Дублирование строки
-        printf("Добавлена задача: %s\n", text);
-        chetch++;
-    } else {
-        printf("Ошибка: список задач переполнен.\n");
-    }
-    return chetch;
-}
-
-int delete_task(char* todo_array[], int index, int chetch){
-    free(todo_array[index - 1]);
-    todo_array[index-1] = todo_array[index];
-    for (int i = index; i < chetch; i ++){
-        todo_array[i] = todo_array[i + 1];
+    FILE *temp = fopen(TEMP_FILE, "w");
+    if (temp == NULL) {
+        perror("Ошибка при создании временного файла");
+        fclose(input);
+        return;
     }
 
-    return(chetch -= 1);
-}
+    char line[256];
+    int current_line = 0;
 
-void print_array(char* todo_array[], int todo_array_size){
-    for (int i = 0; i < todo_array_size; i++){
-        if (todo_array[i] != NULL) {
-            printf("%d: %s\n", i+1, todo_array[i]);
+    while (fgets(line, sizeof(line), input)) {
+        line[strcspn(line, "\n")] = '\0';
+        if (current_line == index) {
+            // Добавляем зачёркивание
+            fprintf(temp, "\033[9m%s\033[0m ✓\n", line);
+        } else {
+            fprintf(temp, "%s\n", line);
         }
+        current_line++;
+    }
+
+    fclose(input);
+    fclose(temp);
+    remove(filename);
+    rename(TEMP_FILE, filename);
+}
+
+int add_task(const char* filename, char* text, int chetch){               // добавлена запись в файл
+    char * message = text;
+     filename = "data.txt";
+    FILE *fp = fopen(filename, "a");
+    if(fp)
+    {
+        // записываем строку
+        fputs(message, fp);
+        fclose(fp);
     }
 }
 
-int main(void){
-    char* todo_array[MAX] = {0}; // Массив указателей на строки
+void delete_task(const char *filename, int index) {
+    FILE *input = fopen(filename, "r");
+    if (input == NULL) {
+        perror("Ошибка при открытии файла");
+        return;
+    }
+
+    FILE *temp = fopen(TEMP_FILE, "w");
+    if (temp == NULL) {
+        perror("Ошибка при создании временного файла");
+        fclose(input);
+        return;
+    }
+
+    char line[256];
+    int current_line = 0;
+
+    while (fgets(line, sizeof(line), input)) {
+        if (current_line != index) {
+            fprintf(temp, "%s", line); 
+        }
+        current_line++;
+    }
+
+    fclose(input);
+    fclose(temp);
+    remove(filename);
+    rename(TEMP_FILE, filename);
+}
+
+void print_array(const char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if (fp == NULL) {
+        printf("Список задач пуст или файл не найден.\n");
+        return;
+    }
+
+    char line[256];
+    int index = 0;
+
+    while (fgets(line, sizeof(line), fp)) {
+        line[strcspn(line, "\n")] = '\0'; // Убираем перевод строки
+        printf("%d. %s\n", index + 1, line);
+        index++;
+    }
+
+    fclose(fp);
+}
+
+int main(void) {
     int chetch = 0;
     char task[4]; // "add", "del", "com"
     int index;
     char text[100];
-    int current_loop = 1;
+    const char *filename = "data.txt";
 
-    while (current_loop){
-        print_array(todo_array, chetch);
+    while (1) {
+        print_array(filename);
         printf("todo_list:> ");
         scanf("%3s", task);
+
         if (strcmp(task, "add") == 0) {
-            getchar(); // Очистка буффера
+            getchar(); // Очистка буфера
             fgets(text, sizeof(text), stdin);
-            text[strcspn(text, "\n")] = '\0'; // Удаление символа новой строки
-            chetch = add_task(todo_array, text, chetch);
+            chetch = add_task(filename, text, chetch);
         } else if (strcmp(task, "del") == 0) {
             scanf("%d", &index);
-            delete_task(todo_array, index, chetch);
+            delete_task(filename, index-1);
         } else if (strcmp(task, "com") == 0) {
             scanf("%d", &index);
-            complite_task(todo_array, index);
-        }  else {
+            complite_task(filename, index-1);
+        } else {
             printf("Неизвестная команда.\n");
         }
     }
 
-    // Освобождение памяти
-    for (int i = 0; i < chetch; i++) {
-        free(todo_array[i]);
-    }
     return 0;
 }
